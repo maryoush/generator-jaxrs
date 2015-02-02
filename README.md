@@ -1,3 +1,9 @@
-[![Build Status](https://travis-ci.org/jhipster/generator-jhipster.svg?branch=master)](https://travis-ci.org/jhipster/generator-jhipster)
+A Spring webservice Yeoman based generator based on http://jhipster.github.io/
 
-Full documentation and information is available on our website at [http://jhipster.github.io/](http://jhipster.github.io/)
+# Installation
+# Install neede packages (todo)
+# Install tghe pap as the Yeoman generator (see  http://jhipster.github.io) 
+# Run the jaxrs genartor
+## Genarte the app
+## Enrich the model (http://jhipster.github.io/creating_an_entity.html)
+## Run the app (spring boot) - might need to rin the mongodb before. 
