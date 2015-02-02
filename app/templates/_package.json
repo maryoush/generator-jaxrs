@@ -1,0 +1,10 @@
+{
+  "name": "<%= _.slugify(baseName) %>",
+  "version": "0.0.0",
+  "description": "Description for <%= baseName %>",
+  "dependencies": {
+  },
+  "engines": {
+    "node": ">=0.10.0"
+  }
+}
