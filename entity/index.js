@@ -1,20 +1,20 @@
 'use strict';
 var util = require('util'),
-        fs = require('fs'),
-        path = require('path'),
-        yeoman = require('yeoman-generator'),
-        chalk = require('chalk'),
-        _s = require('underscore.string'),
-        shelljs = require('shelljs'),
-        scriptBase = require('../script-base');
+    fs = require('fs'),
+    path = require('path'),
+    yeoman = require('yeoman-generator'),
+    chalk = require('chalk'),
+    _s = require('underscore.string'),
+    shelljs = require('shelljs'),
+    scriptBase = require('../script-base');
 
 var EntityGenerator = module.exports = function EntityGenerator(args, options, config) {
     yeoman.generators.NamedBase.apply(this, arguments);
     this.useConfigurationFile =false;
-    if (shelljs.test('-f', '.jhipster.' + this.name + '.json')) {
-        console.log(chalk.green('Found the .jhipster.' + this.name + '.json configuration file, automatically generating the entity'));
+    if (shelljs.test('-f', '.jaxrs.' + this.name + '.json')) {
+        console.log(chalk.green('Found the .jaxrs.' + this.name + '.json configuration file, automatically generating the entity'));
         try {
-            this.fileData = JSON.parse(this.readFileAsString('.jhipster.' + this.name + '.json'))
+            this.fileData = JSON.parse(this.readFileAsString('.jaxrs.' + this.name + '.json'))
         } catch (err) {
             console.log(chalk.red('The configuration file could not be read!'));
             return;
@@ -29,7 +29,7 @@ var EntityGenerator = module.exports = function EntityGenerator(args, options, c
     this.javaVersion = this.config.get('javaVersion');
     this.hibernateCache = this.config.get('hibernateCache');
     this.databaseType = this.config.get('databaseType');
-    this.angularAppName = _s.camelize(_s.slugify(this.baseName)) + 'App';
+    //this.angularAppName = _s.camelize(_s.slugify(this.baseName)) + 'App';
 
     // Specific Entity sub-generator variables
     this.fieldId = 0;
@@ -302,7 +302,7 @@ EntityGenerator.prototype.files = function files() {
         this.data.fieldsContainBigDecimal = this.fieldsContainBigDecimal;
         this.data.fieldsContainDateTime = this.fieldsContainDateTime;
         this.data.changelogDate = this.changelogDate;
-        this.filename = '.jhipster.' + this.name + '.json';
+        this.filename = '.jaxrs.' + this.name + '.json';
         this.write(this.filename, JSON.stringify(this.data, null, 4));
     } else  {
         this.relationships = this.fileData.relationships;
@@ -327,13 +327,13 @@ EntityGenerator.prototype.files = function files() {
     var resourceDir = 'src/main/resources/';
 
     this.template('src/main/java/package/domain/_Entity.java',
-        'src/main/java/' + this.packageFolder + '/domain/' +    this.entityClass + '.java', this, {});
+            'src/main/java/' + this.packageFolder + '/domain/' +    this.entityClass + '.java', this, {});
 
     this.template('src/main/java/package/repository/_EntityRepository.java',
-        'src/main/java/' + this.packageFolder + '/repository/' +    this.entityClass + 'Repository.java', this, {});
+            'src/main/java/' + this.packageFolder + '/repository/' +    this.entityClass + 'Repository.java', this, {});
 
     this.template('src/main/java/package/web/rest/_EntityResource.java',
-        'src/main/java/' + this.packageFolder + '/web/rest/' +    this.entityClass + 'Resource.java', this, {});
+            'src/main/java/' + this.packageFolder + '/web/rest/' +    this.entityClass + 'Resource.java', this, {});
 
 //    if (this.databaseType == "sql") {
 //        this.template(resourceDir + '/config/liquibase/changelog/_added_entity.xml',
@@ -365,33 +365,7 @@ EntityGenerator.prototype.files = function files() {
 //    this.addComponentsScriptToIndex(this.entityInstance + '/' + this.entityInstance + '.service' + '.js');
 //
     this.template('src/test/java/package/web/rest/_EntityResourceTest.java',
-        'src/test/java/' + this.packageFolder + '/web/rest/' +    this.entityClass + 'ResourceTest.java', this, {});
+            'src/test/java/' + this.packageFolder + '/web/rest/' +    this.entityClass + 'ResourceTest.java', this, {});
 
-    // Copy for each
-//    this.copyI18n('ca');
-//    this.copyI18n('da');
-//    this.copyI18n('de');
-//    this.copyI18n('en');
-//    this.copyI18n('es');
-//    this.copyI18n('fr');
-//    this.copyI18n('kr');
-//    this.copyI18n('pl');
-//    this.copyI18n('pt-br');
-//    this.copyI18n('ru');
-//    this.copyI18n('sw');
-//    this.copyI18n('tr');
-//    this.copyI18n('zh-tw');
-};
 
-EntityGenerator.prototype.copyI18n = function(language) {
-    try {
-        var stats = fs.lstatSync('src/main/webapp/i18n/' + language);
-        if (stats.isDirectory()) {
-            this.template('src/main/webapp/i18n/_entity_' + language + '.json', 'src/main/webapp/i18n/' + language + '/' + this.entityInstance + '.json', this, {});
-            this.addNewEntityToMenu(language, this.entityInstance, this.entityClass);
-        }
-    } catch(e) {
-        // An exception is thrown if the folder doesn't exist
-        // do nothing
-    }
 };
