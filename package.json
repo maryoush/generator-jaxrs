@@ -34,7 +34,9 @@
     "shelljs": "0.3.0",
     "chalk": "0.5.1",
     "grunt": "0.4.5",
-    "insight": "0.4.3"
+    "insight": "0.4.3",
+    "raml-parser": "0.8.10",
+    "sync-request":"2.0.1"
   },
   "devDependencies": {
     "grunt": "0.4.5",

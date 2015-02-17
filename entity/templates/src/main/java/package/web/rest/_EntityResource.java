@@ -9,10 +9,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.inject.Inject;<% if (javaVersion == '7') { %>
-import javax.servlet.http.HttpServletResponse;<% } %>
-import java.util.List;<% if (javaVersion == '8') { %>
-import java.util.Optional;<% } %>
+import javax.inject.Inject;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * REST controller for managing <%= entityClass %>.
@@ -54,18 +53,13 @@ public class <%= entityClass %>Resource {
     @RequestMapping(value = "/<%= entityInstance %>s/{id}",
             method = RequestMethod.GET,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<<%= entityClass %>> get(@PathVariable <% if (databaseType == 'sql') { %>Long<% } %><% if (databaseType == 'mongodb') { %>String<% } %> id<% if (javaVersion == '7') { %>, HttpServletResponse response<% } %>) {
-        log.debug("REST request to get <%= entityClass %> : {}", id);<% if (javaVersion == '8') { %>
-        return Optional.ofNullable(<%= entityInstance %>Repository.<% if (fieldsContainOwnerManyToMany == true) { %>findOneWithEagerRelationships<% } else { %>findOne<% } %>(id))
+    public ResponseEntity<<%= entityClass %>> get(@PathVariable String id) {
+        log.debug("REST request to get <%= entityClass %> : {}", id);
+        return Optional.ofNullable(<%= entityInstance %>Repository.findOne(id))
             .map(<%= entityInstance %> -> new ResponseEntity<>(
                 <%= entityInstance %>,
                 HttpStatus.OK))
-            .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));<% } else { %>
-        <%= entityClass %> <%= entityInstance %> = <%= entityInstance %>Repository.<% if (fieldsContainOwnerManyToMany == true) { %>findOneWithEagerRelationships<% } else { %>findOne<% } %>(id);
-        if (<%= entityInstance %> == null) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-        return new ResponseEntity<>(<%= entityInstance %>, HttpStatus.OK);<% } %>
+            .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
     /**
@@ -74,7 +68,7 @@ public class <%= entityClass %>Resource {
     @RequestMapping(value = "/<%= entityInstance %>s/{id}",
             method = RequestMethod.DELETE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    public void delete(@PathVariable <% if (databaseType == 'sql') { %>Long<% } %><% if (databaseType == 'mongodb') { %>String<% } %> id) {
+    public void delete(@PathVariable String id) {
         log.debug("REST request to delete <%= entityClass %> : {}", id);
         <%= entityInstance %>Repository.delete(id);
     }

@@ -60,6 +60,9 @@ JaxrsGenerator.prototype.askFor = function askFor() {
 
     ));
 
+
+
+
     console.log('\nWelcome to the simple JaxRS generator\n');
     var insight = this.insight();
 
@@ -162,16 +165,7 @@ JaxrsGenerator.prototype.askFor = function askFor() {
 JaxrsGenerator.prototype.app = function app() {
     var insight = this.insight();
     insight.track('generator', 'app');
-    insight.track('app/authenticationType', this.authenticationType);
-    insight.track('app/hibernateCache', this.hibernateCache);
-    insight.track('app/clusteredHttpSession', this.clusteredHttpSession);
-    //insight.track('app/websocket', this.websocket);
-    insight.track('app/databaseType', this.databaseType);
-    insight.track('app/buildTool', this.buildTool);
-    //insight.track('app/frontendBuilder', this.frontendBuilder);
-    insight.track('app/javaVersion', this.javaVersion);
-
-    var packageFolder = this.packageName.replace(/\./g, '/');
+     var packageFolder = this.packageName.replace(/\./g, '/');
     var javaDir = 'src/main/java/' + packageFolder + '/';
     var resourceDir = 'src/main/resources/';
 
@@ -203,10 +197,6 @@ JaxrsGenerator.prototype.app = function app() {
     this.mkdir(testDir);
 
     this.template('src/test/java/package/web/rest/_TestUtil.java', testDir + 'web/rest/TestUtil.java', this, {});
-
-
-    //var testResourceDir = 'src/test/resources/';
-
 
     this.config.set('baseName', this.baseName);
     this.config.set('packageName', this.packageName);

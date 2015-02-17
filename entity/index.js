@@ -8,6 +8,7 @@ var util = require('util'),
     shelljs = require('shelljs'),
     scriptBase = require('../script-base');
 
+
 var EntityGenerator = module.exports = function EntityGenerator(args, options, config) {
     yeoman.generators.NamedBase.apply(this, arguments);
     this.useConfigurationFile =false;
@@ -21,7 +22,7 @@ var EntityGenerator = module.exports = function EntityGenerator(args, options, c
         }
         this.useConfigurationFile = true;
     }
-    console.log(chalk.red('The entity ' + this.name + ' is being created.'));
+    console.log(chalk.red('The entity for provided RAML will be created.'));
     this.env.options.appPath = this.config.get('appPath') || 'src/main/webapp';
     this.baseName = this.config.get('baseName');
     this.packageName = this.config.get('packageName');
@@ -29,343 +30,231 @@ var EntityGenerator = module.exports = function EntityGenerator(args, options, c
     this.javaVersion = this.config.get('javaVersion');
     this.hibernateCache = this.config.get('hibernateCache');
     this.databaseType = this.config.get('databaseType');
-    //this.angularAppName = _s.camelize(_s.slugify(this.baseName)) + 'App';
 
     // Specific Entity sub-generator variables
-    this.fieldId = 0;
-    this.fields = [];
-    this.fieldsContainLocalDate = false;
-    this.fieldsContainDateTime = false;
-    this.fieldsContainCustomTime = false;
-    this.fieldsContainBigDecimal = false;
-    this.fieldsContainOwnerManyToMany = false;
-    this.fieldsContainOneToMany = false;
-    this.relationshipId = 0;
-    this.relationships = [];
-};
+    this.ramlUrl = null;
 
-var fieldNamesUnderscored = ['id'];
+    //entities from RAML file
+    this.entities = [];
+
+
+};
 
 util.inherits(EntityGenerator, yeoman.generators.Base);
 util.inherits(EntityGenerator, scriptBase);
 
-EntityGenerator.prototype.askForFields = function askForFields() {
+
+EntityGenerator.prototype.askForRaml = function askForRaml() {
     if (this.useConfigurationFile == true) {// don't prompt if data are imported from a file
         return;
     }
     var cb = this.async();
-    this.fieldId++;
-    console.log(chalk.green('Generating field #' + this.fieldId));
+
+    console.log(chalk.green('Generating POJO from RAML ...'));
     var prompts = [
         {
-            type: 'confirm',
-            name: 'fieldAdd',
-            message: 'Do you want to add a field to your entity?',
-            default: true
-        },
-        {
-            when: function (response) {
-                return response.fieldAdd == true;
-            },
             type: 'input',
-            name: 'fieldName',
+            name: 'ramlUrl',
             validate: function (input) {
-                if ((/^([a-zA-Z0-9_]*)$/.test(input)) && input != '' && input != 'id' && fieldNamesUnderscored.indexOf(_s.underscored(input)) == -1) return true;
-                return 'Your field name cannot contain special characters or use an already existing field name';
-            },
-            message: 'What is the name of your field?'
-        },
-        {
-            when: function (response) {
-                return response.fieldAdd == true;
-            },
-            type: 'list',
-            name: 'fieldType',
-            message: 'What is the type of your field?',
-            choices: [
-                {
-                    value: 'String',
-                    name: 'String'
-                },
-                {
-                    value: 'Integer',
-                    name: 'Integer'
-                },
-                {
-                    value: 'Long',
-                    name: 'Long'
-                },
-                {
-                    value: 'BigDecimal',
-                    name: 'BigDecimal'
-                },
-                {
-                    value: 'LocalDate',
-                    name: 'LocalDate'
-                },
-                {
-                    value: 'DateTime',
-                    name: 'DateTime'
-                },
-                {
-                    value: 'Boolean',
-                    name: 'Boolean'
+
+                var request = require('sync-request'); // include request module
+
+                try{
+                         var response = request('GET',input);
+                         console.log('result ok '+response);
+                        return  true;
+
                 }
-            ],
-            default: 0
+                catch(e){
+                        console.log('err '+response);
+                        return 'Given url is not valid (reason : '+e+') ,  check it correctness !!';
+                }
+
+            },
+            message: 'Provide your RAML url ?',
+            default: 'https://api.yaas.io/configuration/v4/api-console/raml/api/configuration-service.raml'
+                //'http://configuration-v4.test.cf.hybris.com/api-console/raml/api/configuration-service.raml'
         }
     ];
     this.prompt(prompts, function (props) {
-        if (props.fieldAdd) {
-            var field = {fieldId: this.fieldId,
-                fieldName: props.fieldName,
-                fieldType: props.fieldType,
-                fieldNameCapitalized: _s.capitalize(props.fieldName),
-                fieldNameUnderscored: _s.underscored(props.fieldName)}
 
-            fieldNamesUnderscored.push(_s.underscored(props.fieldName));
-            this.fields.push(field);
-            if (props.fieldType == 'LocalDate') {
-                this.fieldsContainLocalDate = true;
-                this.fieldsContainCustomTime = true;
-            }
-            if (props.fieldType == 'BigDecimal') {
-                this.fieldsContainBigDecimal = true;
-            }
-            if (props.fieldType == 'DateTime') {
-                this.fieldsContainDateTime = true;
-                this.fieldsContainCustomTime = true;
-            }
-        }
-        console.log(chalk.red('===========' + _s.capitalize(this.name) + '=============='));
-        for (var id in this.fields) {
-            console.log(chalk.red(this.fields[id].fieldName + ' (' + this.fields[id].fieldType + ')'));
-        }
-        if (props.fieldAdd) {
-            this.askForFields();
-        } else {
-            cb();
-        }
-    }.bind(this));
-};
+        //console.log("Entering prompt ...."+JSON.stringify(props));
 
-EntityGenerator.prototype.askForRelationships = function askForRelationships() {
-    if (this.useConfigurationFile == true) {// don't prompt if data are imported from a file
-        return;
-    }
-    if (this.databaseType == 'mongodb') {
-        return;
-    }
-    var packageFolder = this.packageFolder;
-    var cb = this.async();
-    this.relationshipId++;
-    console.log(chalk.green('Generating relationships with other entities'));
-    var prompts = [
-        {
-            type: 'confirm',
-            name: 'relationshipAdd',
-            message: 'Do you want to add a relationship to another entity?',
-            default: true
-        },
-        {
-            when: function (response) {
-                return response.relationshipAdd == true;
-            },
-            type: 'input',
-            name: 'otherEntityName',
-            validate: function (input) {
-                if ((/^([a-zA-Z0-9_]*)$/.test(input)) && input != '' && input != 'id' && fieldNamesUnderscored.indexOf(_s.underscored(input)) == -1) return true;
-                return 'Your relationship name cannot contain special characters or use an already existing field name';
-            },
-            message: 'What is the name of the other entity?'
-        },
-        {
-            when: function (response) {
-                return response.relationshipAdd == true;
-            },
-            type: 'list',
-            name: 'relationshipType',
-            message: 'What is the type of the relationship?',
-            choices: [
+        if (props.ramlUrl != null) {
+
+            var that = this;
+
+            var index = 0;
+
+            var newEntity  = {};
+
+            processRaml(props.ramlUrl, function (propertyName,typeName){
+
+                //console.log(" processing property ... \'"+propertyName+"\' type  \'"+typeName+"\'" );
+
+                var field = {fieldId: index++,
+                    fieldName: propertyName,
+                    fieldType: typeName,
+                    fieldNameCapitalized: _s.capitalize(propertyName),
+                    fieldNameUnderscored: _s.underscored(propertyName)}
+
+                newEntity.fieldNamesUnderscored.push(_s.underscored(propertyName));
+                newEntity.fields.push(field);
+
+                that.entities.push(newEntity);
+
+                //console.log(" added entity "+that.entities.length);
+
+            }, function (schemaName)
                 {
-                    value: 'one-to-many',
-                    name: 'one-to-many'
-                },
-                {
-                    value: 'many-to-one',
-                    name: 'many-to-one'
-                },
-                {
-                    value: 'many-to-many',
-                    name: 'many-to-many'
-                },
-                {
-                    value: 'one-to-one',
-                    name: 'one-to-one'
+                    newEntity = {
+                        fieldNamesUnderscored  :  ['id'],
+                        fields  : [],
+                        name  : schemaName
+                    };
+
+                    //console.log(" processing schema \'"+schemaName+"\'" );
+                    console.log(chalk.red('===========Processing schema '+schemaName+ '=============='));
+                    if(index > 0 ) {
+                        index = 0;
+                    }
                 }
-            ],
-            default: 0
-        },
-        {
-            when: function(response) {
-                return (response.relationshipAdd == true && response.relationshipType == 'many-to-one' && !shelljs.test('-f', 'src/main/java/' + packageFolder + '/domain/' + _s.capitalize(response.otherEntityName) + '.java'))
-            },
-            type: 'confirm',
-            name: 'noOtherEntity',
-            message: 'WARNING! You are trying to generate a many-to-one relationship on an entity that does not exist. This will probably fail, as you will need to create a foreign key on a table that does not exist. We advise you to create the other side of this relationship first (do the one-to-many before the many-to-one relationship). Are you sure you want to continue?',
-            default: false
-        },
-        {
-            when: function (response) {
-                return (response.relationshipAdd == true && (response.relationshipType == 'many-to-many' || response.relationshipType == 'one-to-one'));
-            },
-            type: 'confirm',
-            name: 'ownerSide',
-            message: 'Is this entity the owner of the relationship?',
-            default: false
-        },
-        {
-            when: function(response) {
-                return (response.relationshipAdd == true && response.ownerSide == true && !shelljs.test('-f', 'src/main/java/' + packageFolder + '/domain/' + _s.capitalize(response.otherEntityName) + '.java'))
-            },
-            type: 'confirm',
-            name: 'noOtherEntity2',
-            message: 'WARNING! You have selected that this entity is the owner of a relationship on another entity, that does not exist yet. This will probably fail, as you will need to create a foreign key on a table that does not exist. We advise you to create the other side of this relationship first (do the non-owning side before the owning side). Are you sure you want to continue?',
-            default: false
-        },
-        {
-            when: function (response) {
-                return (!(response.noOtherEntity == false || response.noOtherEntity2 == false) && response.relationshipAdd == true && (response.relationshipType == 'many-to-one' || (response.relationshipType == 'many-to-many' && response.ownerSide == true)));
-            },
-            type: 'input',
-            name: 'otherEntityField',
-            message: function (response) {
-                return 'When you display this relationship with AngularJS, which field from \'' + response.otherEntityName + '\' do you want to use?'
-            },
-            default: 'id'
-        }
-    ];
-    this.prompt(prompts, function (props) {
-        if (props.noOtherEntity == false || props.noOtherEntity2 == false) {
-            console.log(chalk.red('Generation aborted, as requested by the user.'));
-            return;
-        }
-        if (props.relationshipAdd) {
-            var relationship = {relationshipId: this.relationshipId,
-                otherEntityName: props.otherEntityName.charAt(0).toLowerCase() + props.otherEntityName.slice(1),
-                relationshipType: props.relationshipType,
-                otherEntityNameCapitalized: _s.capitalize(props.otherEntityName),
-                otherEntityField: props.otherEntityField,
-                ownerSide: props.ownerSide}
+            );
 
-            if (props.relationshipType == 'many-to-many' && props.ownerSide == true) {
-                this.fieldsContainOwnerManyToMany = true;
-            }
-            if (props.relationshipType == 'one-to-many') {
-                this.fieldsContainOneToMany = true;
-            }
-            fieldNamesUnderscored.push(_s.underscored(props.otherEntityName));
-            this.relationships.push(relationship);
         }
-        console.log(chalk.red('===========' + _s.capitalize(this.name) + '=============='));
-        for (var id in this.fields) {
-            console.log(chalk.red(this.fields[id].fieldName + ' (' + this.fields[id].fieldType + ')'));
-        }
-        console.log(chalk.red('-------------------'));
-        for (var id in this.relationships) {
-            console.log(chalk.red(this.relationships[id].otherEntityName + ' (' + this.relationships[id].relationshipType + ')'));
-        }
-        if (props.relationshipAdd) {
-            this.askForRelationships();
-        } else {
-            console.log(chalk.green('Everything is configured, generating the entity...'));
-            cb();
-        }
+
+
+             cb();
     }.bind(this));
-
 };
 
 
 EntityGenerator.prototype.files = function files() {
-    if (this.databaseType == "sql") {
-        this.changelogDate = this.dateFormatForLiquibase();
+
+   // console.log("Generating files ... "+this.entities.length);
+
+
+    //traverse for all entities
+    for(var singleEntityIndex in this.entities){
+
+        var singleEntity = this.entities[singleEntityIndex];
+
+        //console.log("Generating file ... "+JSON.stringify(singleEntity));
+
+        if (this.useConfigurationFile == false) { // store informations in a file for further use.
+            this.data = {};
+            this.data.fields = singleEntity.fields;
+            this.data.fieldNamesUnderscored = singleEntity.fieldNamesUnderscored;
+
+            this.data.changelogDate = this.changelogDate;
+            var filename = '.jaxrs.' + singleEntity.name + '.json';
+            this.write(filename, JSON.stringify(this.data, null, 4));
+        } else {
+            this.relationships = this.fileData.relationships;
+            this.fields = this.fileData.fields;
+            this.fieldNamesUnderscored = this.fileData.fieldNamesUnderscored;
+            this.changelogDate = this.fileData.changelogDate;
+        }
+
+        //prepare generation context
+        var ctx = {
+            name : singleEntity.name,
+            packageName : this.packageName,
+            packageFolder : this.packageFolder,
+            entityClass: _s.capitalize(singleEntity.name),
+            entityInstance: singleEntity.name.charAt(0).toLowerCase() + singleEntity.name.slice(1),
+            fields: singleEntity.fields,
+            fieldNamesUnderscored: singleEntity.fieldNamesUnderscored
+        };
+
+        var insight = this.insight();
+        insight.track('generator', 'entity');
+        insight.track('entity/fields', singleEntity.fields.length);
+
+        console.log("Rendering .... "+ctx.entityClass+" ..... ");
+
+        render(this,ctx);
+
+
     }
-    if (this.useConfigurationFile == false) { // store informations in a file for further use.
-        this.data = {};
-        this.data.relationships = this.relationships;
-        this.data.fields = this.fields;
-        this.data.fieldNamesUnderscored = this.fieldNamesUnderscored;
-        this.data.fieldsContainOwnerManyToMany = this.fieldsContainOwnerManyToMany;
-        this.data.fieldsContainOneToMany = this.fieldsContainOneToMany;
-        this.data.fieldsContainLocalDate = this.fieldsContainLocalDate;
-        this.data.fieldsContainCustomTime = this.fieldsContainCustomTime;
-        this.data.fieldsContainBigDecimal = this.fieldsContainBigDecimal;
-        this.data.fieldsContainDateTime = this.fieldsContainDateTime;
-        this.data.changelogDate = this.changelogDate;
-        this.filename = '.jaxrs.' + this.name + '.json';
-        this.write(this.filename, JSON.stringify(this.data, null, 4));
-    } else  {
-        this.relationships = this.fileData.relationships;
-        this.fields = this.fileData.fields;
-        this.fieldNamesUnderscored = this.fileData.fieldNamesUnderscored;
-        this.fieldsContainOwnerManyToMany = this.fileData.fieldsContainOwnerManyToMany;
-        this.fieldsContainOneToMany = this.fileData.fieldsContainOneToMany;
-        this.fieldsContainLocalDate = this.fileData.fieldsContainLocalDate;
-        this.fieldsContainCustomTime = this.fileData.fieldsContainCustomTime;
-        this.fieldsContainBigDecimal = this.fileData.fieldsContainBigDecimal;
-        this.fieldsContainDateTime = this.fileData.fieldsContainDateTime;
-        this.changelogDate = this.fileData.changelogDate;
+
+    function render(that , ctx)
+    {
+        that.template('src/main/java/package/domain/_Entity.java',
+            'src/main/java/' + ctx.packageFolder + '/domain/' + ctx.entityClass + '.java', ctx, {});
+
+        that.template('src/main/java/package/repository/_EntityRepository.java',
+            'src/main/java/' + ctx.packageFolder + '/repository/' + ctx.entityClass + 'Repository.java', ctx, {});
+
+        that.template('src/main/java/package/web/rest/_EntityResource.java',
+            'src/main/java/' + ctx.packageFolder + '/web/rest/' + ctx.entityClass + 'Resource.java', ctx, {});
+
+        that.template('src/test/java/package/web/rest/_EntityResourceTest.java',
+            'src/test/java/' + ctx.packageFolder + '/web/rest/' + ctx.entityClass + 'ResourceTest.java', ctx, {});
     }
-    this.entityClass = _s.capitalize(this.name);
-    this.entityInstance = this.name.charAt(0).toLowerCase() + this.name.slice(1);
-
-    var insight = this.insight();
-    insight.track('generator', 'entity');
-    insight.track('entity/fields', this.fields.length);
-    insight.track('entity/relationships', this.relationships.length);
-
-    var resourceDir = 'src/main/resources/';
-
-    this.template('src/main/java/package/domain/_Entity.java',
-            'src/main/java/' + this.packageFolder + '/domain/' +    this.entityClass + '.java', this, {});
-
-    this.template('src/main/java/package/repository/_EntityRepository.java',
-            'src/main/java/' + this.packageFolder + '/repository/' +    this.entityClass + 'Repository.java', this, {});
-
-    this.template('src/main/java/package/web/rest/_EntityResource.java',
-            'src/main/java/' + this.packageFolder + '/web/rest/' +    this.entityClass + 'Resource.java', this, {});
-
-//    if (this.databaseType == "sql") {
-//        this.template(resourceDir + '/config/liquibase/changelog/_added_entity.xml',
-//            resourceDir + 'config/liquibase/changelog/' + this.changelogDate + '_added_entity_' + this.entityClass + '.xml', this, {});
-//
-//        this.addChangelogToLiquibase(this.changelogDate + '_added_entity_' + this.entityClass);
-//    }
-
-//    this.template('src/main/webapp/app/_entities.html',
-//        'src/main/webapp/scripts/app/entities/' +    this.entityInstance  + '/' + this.entityInstance + 's.html', this, {});
-//    this.template('src/main/webapp/app/_entity-detail.html',
-//        'src/main/webapp/scripts/app/entities/' +    this.entityInstance  + '/' + this.entityInstance + '-detail.html', this, {});
-
-//    this.addRouterToMenu(this.entityInstance);
-
-//    this.template('src/main/webapp/app/_entity.js',
-//        'src/main/webapp/scripts/app/entities/' +    this.entityInstance + '/' + this.entityInstance + '.js', this, {});
-//    this.addAppScriptToIndex(this.entityInstance + '/' + this.entityInstance + '.js');
-//    this.template('src/main/webapp/app/_entity-controller.js',
-//        'src/main/webapp/scripts/app/entities/' +    this.entityInstance + '/' + this.entityInstance + '.controller' + '.js', this, {});
-//    this.addAppScriptToIndex(this.entityInstance + '/' + this.entityInstance + '.controller' + '.js');
-//
-//    this.template('src/main/webapp/app/_entity-detail-controller.js',
-//        'src/main/webapp/scripts/app/entities/' +    this.entityInstance + '/' + this.entityInstance + '-detail.controller' + '.js', this, {});
-//    this.addAppScriptToIndex(this.entityInstance + '/' + this.entityInstance + '-detail.controller' + '.js');
-//
-//    this.template('src/main/webapp/components/_entity-service.js',
-//        'src/main/webapp/scripts/components/entities/' + this.entityInstance + '/' + this.entityInstance + '.service' + '.js', this, {});
-//    this.addComponentsScriptToIndex(this.entityInstance + '/' + this.entityInstance + '.service' + '.js');
-//
-    this.template('src/test/java/package/web/rest/_EntityResourceTest.java',
-            'src/test/java/' + this.packageFolder + '/web/rest/' +    this.entityClass + 'ResourceTest.java', this, {});
-
 
 };
+
+
+function processRaml (ramlFileUrl,onField,onSchema){
+
+    var raml = require('raml-parser');
+
+    //'http://configuration-v4.test.cf.hybris.com/api-console/raml/api/configuration-service.raml'
+    raml.loadFile(ramlFileUrl).then( function(data) {
+
+         data.schemas.forEach(function (schemeEntry) {
+
+                                    //nsole.log('loading schema -'+Object.keys(schemeEntry));
+                                    Object.keys(schemeEntry).forEach(function (key){
+
+                                        try
+                                        {
+                                            console.log('schema - '+key);
+                                            var jsonObj =   JSON.parse(schemeEntry[key]);
+                                            onSchema(key);
+                                            if( jsonObj.type === 'object')
+                                            {
+                                                //or( propertyName in jsonObj.properties)
+                                                Object.keys(jsonObj.properties).forEach(function (propertyName){
+                                                {
+
+                                                    if( jsonObj.properties[propertyName].hasOwnProperty('type'))
+                                                    {
+                                                        //console.log('  property '+propertyName+' type '+
+                                                         //   jsonObj.properties[propertyName].type);
+                                                        onField(propertyName,jsonObj.properties[propertyName].type);
+                                                    }
+                                                    else if(jsonObj.properties[propertyName].hasOwnProperty('oneOf'))
+                                                    {
+                                                        //console.log('  property '+propertyName+' type oneof ...');
+
+                                                        onField(propertyName,'map');
+                                                    }
+                                                    else
+                                                    {
+                                                        //console.log('  property '+propertyName+' type unknown');
+                                                        onField(propertyName,'object');
+                                                    }
+                                                }
+                                                });
+                                            }
+                                            else if(jsonObj.type == 'array')
+                                            {
+                                                //console.log(' -- container --');
+                                                onField(propertyName,'array');
+                                            }
+                                        //
+                                        }
+                                        catch(e)
+                                        {
+                                            console.error(e);
+                                        }
+                                    });
+                            });
+
+    }, function(error) {
+        console.log('Error parsing RAML '+ramlFileUrl+': ' + error);
+    });
+
+}

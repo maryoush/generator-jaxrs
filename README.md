@@ -12,8 +12,19 @@ Go to the jaxrs-generator folder and run
 npm link
 ```
 # Run the jaxrs generator
-## Generate the app
-## Enrich the model (http://jhipster.github.io/creating_an_entity.html)
+## Generate the app skeleton
+Run the yo app in your target directory 
+```
+yo 
+```
+## Provide an entities for given RAML
+* Run the entity generator
+```
+yo jaxrs:entity not-important
+```
+* Provide the RAML url or use default one....
+
+(TODO)
 # Run the app 
 ## Run the persistence - mongodb 
 ## Run the spring boot app
